@@ -1,0 +1,111 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from google.colab import drive
+from datetime import datetime
+drive.mount('/content/gdrive')
+from google.colab import auth
+auth.authenticate_user()
+import gspread
+import google.auth
+credentials, project_id = google.auth.default()
+
+## Setup
+gc = gspread.authorize(credentials)
+from gspread_dataframe import set_with_dataframe
+data = gc.open_by_url("https://docs.google.com/spreadsheets/d/1lTdPRJDuN77GtOQhx0PMYAogLnEyJQOSjXzCzw7TkWk").worksheet("Data").get_all_values()
+df = pd.DataFrame(data[1:], columns=data[0])
+
+
+# number of row and column
+df.shape
+
+#print 5 first rows of Dataset
+df.head()
+
+#print Dataset description
+df.info()
+
+#delete unnecessary columns
+df = df.drop('Product Category Id', axis=1)
+df = df.drop('Product Description', axis=1)
+df = df.drop('Product Status', axis=1)
+df = df.drop('Customer Email', axis=1)
+df = df.drop('Customer Fname', axis=1)
+df = df.drop('Customer Lname', axis=1)
+df = df.drop('Customer Password', axis=1)
+df = df.drop('Customer Street', axis=1)
+df = df.drop('Customer Zipcode', axis=1)
+df = df.drop('Department Id', axis=1)
+df = df.drop('Order Item Cardprod Id', axis=1)
+df = df.drop('Order Zipcode', axis=1)
+df = df.drop('Product Image', axis=1)
+df = df.drop('Order Item Profit Ratio', axis=1)
+
+# convert datatype
+df['order date (DateOrders)'] = pd.to_datetime(df['order date (DateOrders)'])
+df['Order Profit Per Order'] = df['Order Profit Per Order'].astype(float)
+
+# View the statistics of the data
+df.describe()
+
+# See the correlation between columns (features) with each other
+df.corr()
+
+# revenue by type
+sales_by_type = df.groupby('Type')['Sales'].sum().round(2)
+sales_by_type.sort_values(ascending=False)
+
+# revenue by category
+doanhthu_by_cate = df.groupby('Category Name')['Sales'].sum().round(2)
+doanhthu_by_cate.sort_values(ascending=False)
+
+# number of sales by category Category Name
+df['Order Item Quantity'] = pd.to_numeric(df['Order Item Quantity'])
+soluong_by_cate = df.groupby('Category Name')['Order Item Quantity'].sum().round(0)
+soluong_by_cate.sort_values(ascending=False)
+
+import matplotlib.pyplot as plt
+
+# Draw histograms
+plt.hist(df['Order Item Quantity'], bins=20, edgecolor='black')
+plt.xlabel('Quantity')
+plt.ylabel('Number of Orders')
+plt.title('Orders distributed')
+
+# Show chart
+plt.show()
+
+# Count the number of orders in each delivery status category
+delivery_status_counts = df['Delivery Status'].value_counts()
+
+# Create the pie chart
+plt.pie(delivery_status_counts, labels=delivery_status_counts.index, autopct='%1.1f%%')
+plt.title('Delivery Status Distribution')
+plt.show()
+
+import matplotlib.pyplot as plt
+
+# Filter data for each delivery status
+late_delivery = df[df['Delivery Status'] == 'Late delivery']
+advance_shipping = df[df['Delivery Status'] == 'Advance shipping']
+shipping_on_time = df[df['Delivery Status'] == 'Shipping on time']
+shipping_canceled = df[df['Delivery Status'] == 'Shipping canceled']
+
+# Facilitating each mode of transportation
+shipping_modes = ['Standard Class', 'First Class', 'Second Class', 'Same Day']
+
+# Calculate order quantity in each delivery status and shipping method
+late_delivery_counts = [len(late_delivery[late_delivery['Shipping Mode'] == mode]) for mode in shipping_modes]
+advance_shipping_counts = [len(advance_shipping[advance_shipping['Shipping Mode'] == mode]) for mode in shipping_modes]
+shipping_on_time_counts = [len(shipping_on_time[shipping_on_time['Shipping Mode'] == mode]) for mode in shipping_modes]
+shipping_canceled_counts = [len(shipping_canceled[shipping_canceled['Shipping Mode'] == mode]) for mode in shipping_modes]
+
+# Create column chart
+plt.bar(shipping_modes, late_delivery_counts, label='Late delivery')
+plt.bar(shipping_modes, advance_shipping_counts, label='Advance shipping')
+plt.bar(shipping_modes, shipping_on_time_counts, label='Shipping on time')
+plt.bar(shipping_modes, shipping_canceled_counts, label='Shipping canceled')
+
+plt.show()
